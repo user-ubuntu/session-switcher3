@@ -357,14 +357,57 @@ class ImportController {
     this.hideFileReadyMessage();
   }
 
+
+
   private showStatus(message: string, type: "success" | "error" | "loading"): void {
-    this.statusMessage.textContent = message;
+    // Clear previous content
+    this.statusMessage.innerHTML = '';
+    
+    // Create content structure
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'status-message-content';
+    
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'status-icon';
+    
+    const textSpan = document.createElement('span');
+    textSpan.className = `status-text ${type}`;
+    textSpan.textContent = message;
+    
+    // Add appropriate icons
+    switch (type) {
+      case 'success':
+        iconSpan.textContent = '✅';
+        break;
+      case 'error':
+        iconSpan.textContent = '❌';
+        break;
+      case 'loading':
+        iconSpan.textContent = '⏳';
+        break;
+    }
+    
+    contentDiv.appendChild(iconSpan);
+    contentDiv.appendChild(textSpan);
+    this.statusMessage.appendChild(contentDiv);
+    
+    // Update classes
     this.statusMessage.className = `status-message ${type}`;
-    this.statusMessage.style.display = "block";
+    
+    // Show with animation
+    this.statusMessage.style.display = 'flex';
+    setTimeout(() => {
+      this.statusMessage.classList.add('show');
+    }, 10);
   }
 
+
   private hideStatus(): void {
-    this.statusMessage.style.display = "none";
+    this.statusMessage.classList.remove('show');
+    setTimeout(() => {
+      this.statusMessage.style.display = "none";
+      this.statusMessage.innerHTML = '';
+    }, 300);
   }
 
   private closeImportPage(): void {
