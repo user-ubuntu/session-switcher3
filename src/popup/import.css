@@ -97,12 +97,54 @@ body {
     color: #868e96 !important;
 }
 
+
 .file-info {
     background: #f8f9fa;
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 24px;
     border: 1px solid #e9ecef;
+}
+
+.file-ready-message {
+    background: #e8f5e8;
+    border: 2px solid #4caf50;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ready-icon {
+    font-size: 32px;
+    color: #4caf50;
+}
+
+.ready-text h4 {
+    color: #2e7d32;
+    margin-bottom: 4px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ready-text p {
+    color: #388e3c;
+    font-size: 14px;
+    margin: 0;
 }
 
 .file-header {

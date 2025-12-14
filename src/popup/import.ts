@@ -26,6 +26,7 @@ class ImportController {
   private file: File | null = null;
   private fileData: ImportFileData | null = null;
   
+
   private uploadArea!: HTMLElement;
   private fileInput!: HTMLInputElement;
   private fileInfo!: HTMLElement;
@@ -36,11 +37,13 @@ class ImportController {
   private previewSessionsList!: HTMLElement;
   private importBtn!: HTMLButtonElement;
   private statusMessage!: HTMLElement;
+  private fileReadyMessage!: HTMLElement;
 
   constructor() {
     this.initializeElements();
     this.setupEventListeners();
   }
+
 
   private initializeElements(): void {
     this.uploadArea = document.getElementById("uploadArea")!;
@@ -53,6 +56,7 @@ class ImportController {
     this.previewSessionsList = document.getElementById("previewSessionsList")!;
     this.importBtn = document.getElementById("importBtn") as HTMLButtonElement;
     this.statusMessage = document.getElementById("statusMessage")!;
+    this.fileReadyMessage = document.getElementById("fileReadyMessage")!;
   }
 
   private setupEventListeners(): void {
@@ -153,6 +157,7 @@ class ImportController {
   }
 
 
+
   private parseFileContent(content: string): void {
     try {
       const data: ImportFileData = JSON.parse(content);
@@ -181,6 +186,7 @@ class ImportController {
       this.fileData = data;
       this.displayFileInfo();
       this.displaySessionsPreview();
+      this.showFileReadyMessage();
       this.importBtn.disabled = false;
       
     } catch (error) {
@@ -288,6 +294,7 @@ class ImportController {
     this.sessionPreview.style.display = "block";
   }
 
+
   private async handleImport(): Promise<void> {
     if (!this.fileData || !this.file) {
       this.showStatus("No file to import", "error");
@@ -297,16 +304,11 @@ class ImportController {
     try {
       this.showStatus("Importing sessions...", "loading");
       this.importBtn.disabled = true;
-
+      console.log("Import button disabled, starting import process...");
 
       const importMode = (document.querySelector('input[name="importMode"]:checked') as HTMLInputElement).value;
       
-
-
-
-
-
-
+      console.log("Sending import request to background script...");
       // Send import request to background script
       const response = await chrome.runtime.sendMessage({
         action: "IMPORT_SESSIONS_NEW",
@@ -316,24 +318,33 @@ class ImportController {
         }
       });
 
-      if (response.success) {
+      console.log("Response from background script:", response);
+
+      if (response && response.success) {
+        console.log("Import successful, disabling button and closing tab...");
         this.showStatus(`Successfully imported ${this.fileData.sessions.length} sessions!`, "success");
+        this.importBtn.disabled = true;
         
         // Close the import page after a delay
         setTimeout(() => {
+          console.log("Closing import page...");
           this.closeImportPage();
         }, 2000);
       } else {
-        throw new Error(response.error || "Import failed");
+        console.error("Import failed:", response?.error || "Unknown error");
+        throw new Error(response?.error || "Import failed");
       }
 
     } catch (error) {
+      console.error("Import error caught:", error);
       this.showStatus(handleError(error, "import sessions"), "error");
       console.error("Import error:", error);
-    } finally {
+      // Re-enable button on error so user can try again
       this.importBtn.disabled = false;
     }
+    // Note: Removed finally block to prevent re-enabling button on success
   }
+
 
   private clearFile(): void {
     this.file = null;
@@ -343,6 +354,7 @@ class ImportController {
     this.sessionPreview.style.display = "none";
     this.importBtn.disabled = true;
     this.hideStatus();
+    this.hideFileReadyMessage();
   }
 
   private showStatus(message: string, type: "success" | "error" | "loading"): void {
@@ -360,6 +372,7 @@ class ImportController {
     window.close();
   }
 
+
   private formatFileSize(bytes: number): string {
     if (bytes === 0) return "0 Bytes";
     
@@ -368,6 +381,14 @@ class ImportController {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  }
+
+  private showFileReadyMessage(): void {
+    this.fileReadyMessage.style.display = "flex";
+  }
+
+  private hideFileReadyMessage(): void {
+    this.fileReadyMessage.style.display = "none";
   }
 }
 

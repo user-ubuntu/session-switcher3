@@ -220,20 +220,27 @@ export class MessageService {
   }
 
 
+
   private async handleImportSessionsNew(
     message: Extract<MessageType, { action: "IMPORT_SESSIONS_NEW" }>,
     sendResponse: SendResponseType
   ): Promise<void> {
     try {
+      console.log("handleImportSessionsNew called with:", message);
+      
       const { data } = message;
       const { sessions, mode } = data;
       
+      console.log("Import data received:", { sessionsCount: sessions?.length, mode });
+      
       if (!sessions || !Array.isArray(sessions)) {
+        console.error("Invalid sessions data:", sessions);
         sendResponse({ success: false, error: "Invalid sessions data" });
         return;
       }
       
       const currentSessions = await this.getStoredSessions();
+      console.log("Current sessions count:", currentSessions.length);
       
       // Generate new IDs for imported sessions to avoid conflicts
       const sessionsWithNewIds = sessions.map((session: any) => ({
@@ -241,21 +248,28 @@ export class MessageService {
         id: crypto.randomUUID()
       }));
       
+      console.log("Generated new IDs for sessions");
+      
       let mergedSessions: any[];
       
       if (mode === "merge") {
         // Merge with existing sessions
         mergedSessions = [...currentSessions, ...sessionsWithNewIds];
+        console.log("Merging sessions, total count:", mergedSessions.length);
       } else {
         // Replace existing sessions (for future implementation)
         mergedSessions = [...sessionsWithNewIds];
+        console.log("Replacing sessions, new count:", mergedSessions.length);
       }
       
       // Save merged sessions
       await this.saveStoredSessions(mergedSessions);
+      console.log("Sessions saved successfully");
       
-      sendResponse({ success: true });
+      sendResponse({ success: true, data: { importedCount: sessionsWithNewIds.length } });
+      console.log("Response sent successfully");
     } catch (error) {
+      console.error("Error in handleImportSessionsNew:", error);
       sendResponse({ success: false, error: String(error) });
     }
   }
