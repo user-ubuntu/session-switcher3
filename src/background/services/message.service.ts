@@ -80,8 +80,14 @@ export class MessageService {
         await this.handleExportSessions(message, sendResponse);
         break;
         
+
       case MESSAGE_ACTIONS.IMPORT_SESSIONS:
         await this.handleImportSessions(message, sendResponse);
+        break;
+        
+
+      case MESSAGE_ACTIONS.IMPORT_SESSIONS_NEW:
+        await this.handleImportSessionsNew(message, sendResponse);
         break;
 
       default:
@@ -170,6 +176,7 @@ export class MessageService {
     }
   }
   
+
   private async handleImportSessions(
     message: Extract<MessageType, { action: "importSessions" }>,
     sendResponse: SendResponseType
@@ -202,6 +209,47 @@ export class MessageService {
       
       // Merge with existing sessions
       const mergedSessions = [...currentSessions, ...sessionsWithNewIds];
+      
+      // Save merged sessions
+      await this.saveStoredSessions(mergedSessions);
+      
+      sendResponse({ success: true });
+    } catch (error) {
+      sendResponse({ success: false, error: String(error) });
+    }
+  }
+
+
+  private async handleImportSessionsNew(
+    message: Extract<MessageType, { action: "IMPORT_SESSIONS_NEW" }>,
+    sendResponse: SendResponseType
+  ): Promise<void> {
+    try {
+      const { data } = message;
+      const { sessions, mode } = data;
+      
+      if (!sessions || !Array.isArray(sessions)) {
+        sendResponse({ success: false, error: "Invalid sessions data" });
+        return;
+      }
+      
+      const currentSessions = await this.getStoredSessions();
+      
+      // Generate new IDs for imported sessions to avoid conflicts
+      const sessionsWithNewIds = sessions.map((session: any) => ({
+        ...session,
+        id: crypto.randomUUID()
+      }));
+      
+      let mergedSessions: any[];
+      
+      if (mode === "merge") {
+        // Merge with existing sessions
+        mergedSessions = [...currentSessions, ...sessionsWithNewIds];
+      } else {
+        // Replace existing sessions (for future implementation)
+        mergedSessions = [...sessionsWithNewIds];
+      }
       
       // Save merged sessions
       await this.saveStoredSessions(mergedSessions);

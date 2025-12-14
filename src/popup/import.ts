@@ -1,398 +1,311 @@
-import { MESSAGE_ACTIONS } from "@shared/constants/messages";
-import { ChromeApiService } from "./services/chromeApi.service";
-import { ExtensionError, handleError } from "@shared/utils/errorHandling";
-import { generateId } from "@shared/utils/idGenerator";
-import { SessionData } from "@shared/types/session.types";
+import { handleError } from "@shared/utils/errorHandling";
 
-interface ImportData {
-  sessions: SessionData[];
-  exportDate: string;
-  version: string;
+interface SessionData {
+  id: string;
+  name: string;
+  order: number;
+  cookies: chrome.cookies.Cookie[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface FileInfo {
-  file: File;
-  content: string;
+interface ImportFileData {
   sessions: SessionData[];
-  size: string;
+  metadata: {
+    version: string;
+    exportedAt: string;
+    source: string;
+  };
 }
+
 
 class ImportController {
-  private chromeApi = new ChromeApiService();
-  private fileInfo: FileInfo | null = null;
-  private isImporting = false;
-
-  // DOM Elements
-  private uploadArea: HTMLElement;
-  private jsonFileInput: HTMLInputElement;
-  private fileInfoDiv: HTMLElement;
-  private fileName: HTMLElement;
-  private fileSize: HTMLElement;
-  private clearFileBtn: HTMLButtonElement;
-  private sessionPreview: HTMLElement;
-  private previewSessionsList: HTMLElement;
-  private importBtn: HTMLButtonElement;
-  private backBtn: HTMLButtonElement;
-  private statusMessage: HTMLElement;
+  private file: File | null = null;
+  private fileData: ImportFileData | null = null;
+  
+  private uploadArea!: HTMLElement;
+  private fileInput!: HTMLInputElement;
+  private fileInfo!: HTMLElement;
+  private fileName!: HTMLElement;
+  private fileSize!: HTMLElement;
+  private clearFileBtn!: HTMLButtonElement;
+  private sessionPreview!: HTMLElement;
+  private previewSessionsList!: HTMLElement;
+  private importBtn!: HTMLButtonElement;
+  private statusMessage!: HTMLElement;
 
   constructor() {
-    // Get DOM elements
-    this.uploadArea = document.getElementById('uploadArea')!;
-    this.jsonFileInput = document.getElementById('jsonFileInput') as HTMLInputElement;
-    this.fileInfoDiv = document.getElementById('fileInfo')!;
-    this.fileName = document.getElementById('fileName')!;
-    this.fileSize = document.getElementById('fileSize')!;
-    this.clearFileBtn = document.getElementById('clearFileBtn') as HTMLButtonElement;
-    this.sessionPreview = document.getElementById('sessionPreview')!;
-    this.previewSessionsList = document.getElementById('previewSessionsList')!;
-    this.importBtn = document.getElementById('importBtn') as HTMLButtonElement;
-    this.backBtn = document.getElementById('backBtn') as HTMLButtonElement;
-    this.statusMessage = document.getElementById('statusMessage')!;
-
+    this.initializeElements();
     this.setupEventListeners();
   }
 
+  private initializeElements(): void {
+    this.uploadArea = document.getElementById("uploadArea")!;
+    this.fileInput = document.getElementById("jsonFileInput") as HTMLInputElement;
+    this.fileInfo = document.getElementById("fileInfo")!;
+    this.fileName = document.getElementById("fileName")!;
+    this.fileSize = document.getElementById("fileSize")!;
+    this.clearFileBtn = document.getElementById("clearFileBtn") as HTMLButtonElement;
+    this.sessionPreview = document.getElementById("sessionPreview")!;
+    this.previewSessionsList = document.getElementById("previewSessionsList")!;
+    this.importBtn = document.getElementById("importBtn") as HTMLButtonElement;
+    this.statusMessage = document.getElementById("statusMessage")!;
+  }
+
   private setupEventListeners(): void {
-    // File input change
-    this.jsonFileInput.addEventListener('change', (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        this.handleFileSelect(file);
+    // Upload area click handler
+    this.uploadArea.addEventListener("click", () => {
+      this.fileInput.click();
+    });
+
+    // File input change handler
+    this.fileInput.addEventListener("change", (e) => {
+      const target = e.target as HTMLInputElement;
+      if (target.files && target.files.length > 0) {
+        this.handleFileSelect(target.files[0]);
       }
     });
 
-    // Upload area click
-    this.uploadArea.addEventListener('click', () => {
-      this.jsonFileInput.click();
-    });
-
-    // Drag and drop
-    this.uploadArea.addEventListener('dragover', (e) => {
+    // Drag and drop handlers
+    this.uploadArea.addEventListener("dragover", (e) => {
       e.preventDefault();
-      this.uploadArea.classList.add('drag-over');
+      this.uploadArea.classList.add("drag-over");
     });
 
-    this.uploadArea.addEventListener('dragleave', () => {
-      this.uploadArea.classList.remove('drag-over');
+    this.uploadArea.addEventListener("dragleave", () => {
+      this.uploadArea.classList.remove("drag-over");
     });
 
-    this.uploadArea.addEventListener('drop', (e) => {
+    this.uploadArea.addEventListener("drop", (e) => {
       e.preventDefault();
-      this.uploadArea.classList.remove('drag-over');
+      this.uploadArea.classList.remove("drag-over");
       
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
-        const file = files[0];
-        if (this.validateFile(file)) {
-          this.handleFileSelect(file);
-        }
+        this.handleFileSelect(files[0]);
       }
     });
 
-    // Clear file
-    this.clearFileBtn.addEventListener('click', () => {
+    // Clear file button
+    this.clearFileBtn.addEventListener("click", () => {
       this.clearFile();
     });
 
     // Import button
-    this.importBtn.addEventListener('click', () => {
+    this.importBtn.addEventListener("click", () => {
       this.handleImport();
     });
 
     // Back button
-    this.backBtn.addEventListener('click', () => {
-      this.goBackToExtension();
+    const backBtn = document.getElementById("backBtn") as HTMLButtonElement;
+    backBtn.addEventListener("click", () => {
+      this.closeImportPage();
+    });
+
+    // Import mode radio buttons
+    const importModeRadios = document.querySelectorAll('input[name="importMode"]');
+    importModeRadios.forEach(radio => {
+      radio.addEventListener("change", () => {
+        // Optional: Add specific handling for different import modes
+        console.log("Import mode changed to:", (radio as HTMLInputElement).value);
+      });
     });
   }
 
-  private validateFile(file: File): boolean {
-    // Check file type
+  private handleFileSelect(file: File): void {
+    // Validate file type
     if (!file.name.toLowerCase().endsWith('.json')) {
-      this.showStatus('Please select a JSON file.', 'error');
-      return false;
-    }
-
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      this.showStatus('File size must be less than 10MB.', 'error');
-      return false;
-    }
-
-    return true;
-  }
-
-  private async handleFileSelect(file: File): Promise<void> {
-    if (!this.validateFile(file)) {
+      this.showStatus("Please select a JSON file", "error");
       return;
     }
 
-    try {
-      this.showStatus('Reading file...', 'loading');
-      
-      const content = await this.readFile(file);
-      const sessions = await this.parseAndValidateSessions(content);
-      
-      this.fileInfo = {
-        file,
-        content,
-        sessions,
-        size: this.formatFileSize(file.size)
-      };
-
-      this.displayFileInfo();
-      this.showStatus('File loaded successfully.', 'success');
-      
-    } catch (error) {
-      console.error('Error reading file:', error);
-      this.showStatus(handleError(error, 'File reading'), 'error');
-      this.clearFile();
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      this.showStatus("File size must be less than 10MB", "error");
+      return;
     }
+
+    this.file = file;
+    this.readFile(file);
   }
 
-  private readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
+  private readFile(file: File): void {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
         const content = e.target?.result as string;
-        resolve(content);
-      };
-      
-      reader.onerror = () => {
-        reject(new ExtensionError('Failed to read file'));
-      };
-      
-      reader.readAsText(file);
-    });
-  }
-
-  private async parseAndValidateSessions(content: string): Promise<SessionData[]> {
-    try {
-      const importData: ImportData = JSON.parse(content);
-      
-      if (!importData || !Array.isArray(importData.sessions)) {
-        throw new ExtensionError('Invalid import data format');
+        this.parseFileContent(content);
+      } catch (error) {
+        this.showStatus("Error reading file", "error");
+        console.error("File read error:", error);
       }
+    };
 
-      const sessions = importData.sessions;
-      
-      // Validate sessions
-      for (const session of sessions) {
-        if (!session.id || !session.domain || !session.name) {
-          throw new ExtensionError('Invalid session data in import file');
-        }
-        
-        // Validate required properties
-        if (!Array.isArray(session.cookies) || 
-            typeof session.localStorage !== 'object' || 
-            typeof session.sessionStorage !== 'object') {
-          throw new ExtensionError('Invalid session data structure');
-        }
-      }
+    reader.onerror = () => {
+      this.showStatus("Error reading file", "error");
+    };
 
-      // Generate new IDs for duplicate sessions to avoid conflicts
-      const existingIds = new Set<string>(); // We'll check this via API call
-      const processedSessions = await this.checkForExistingSessions(sessions);
-      
-      return processedSessions;
-    } catch (error) {
-      if (error instanceof ExtensionError) {
-        throw error;
-      }
-      throw new ExtensionError('Invalid JSON format or corrupted file');
-    }
+    reader.readAsText(file);
   }
 
 
-  private async checkForExistingSessions(sessions: SessionData[]): Promise<SessionData[]> {
+  private parseFileContent(content: string): void {
     try {
-      // For now, we'll generate new IDs for all imported sessions
-      // This avoids the tabId: -1 error and ensures no conflicts
-      return sessions.map(session => ({
-        ...session,
-        id: generateId()
-      }));
+      const data: ImportFileData = JSON.parse(content);
+      
+      // Validate structure - sessions is required
+      if (!data.sessions || !Array.isArray(data.sessions)) {
+        throw new Error("Invalid file format: missing sessions array");
+      }
+
+      // metadata is optional, but if present should have required fields
+      if (data.metadata && (!data.metadata.version || !data.metadata.exportedAt)) {
+        throw new Error("Invalid file format: incomplete metadata");
+      }
+
+      // Validate each session
+      for (const session of data.sessions) {
+        if (!session.id || !session.name) {
+          throw new Error("Invalid session data in file: missing id or name");
+        }
+        // cookies is optional as some sessions might be empty
+        if (!Array.isArray(session.cookies)) {
+          session.cookies = [];
+        }
+      }
+
+      this.fileData = data;
+      this.displayFileInfo();
+      this.displaySessionsPreview();
+      this.importBtn.disabled = false;
+      
     } catch (error) {
-      // If we can't check existing sessions, still generate new IDs
-      return sessions.map(session => ({
-        ...session,
-        id: generateId()
-      }));
+      this.showStatus("Invalid JSON file format", "error");
+      console.error("Parse error:", error);
     }
   }
 
   private displayFileInfo(): void {
-    if (!this.fileInfo) return;
+    if (!this.file) return;
 
-    // Display file info
-    this.fileName.textContent = this.fileInfo.file.name;
-    this.fileSize.textContent = this.fileInfo.size;
-
-    // Display file info div
-    this.fileInfoDiv.style.display = 'block';
-
-    // Display session preview
-    this.displaySessionPreview();
-
-    // Enable import button
-    this.importBtn.disabled = false;
+    this.fileName.textContent = this.file.name;
+    this.fileSize.textContent = this.formatFileSize(this.file.size);
+    this.fileInfo.style.display = "block";
   }
 
-  private displaySessionPreview(): void {
-    if (!this.fileInfo) return;
+  private displaySessionsPreview(): void {
+    if (!this.fileData) return;
 
-    // Clear existing content
-    this.previewSessionsList.innerHTML = '';
-
-    // Add session items
-    this.fileInfo.sessions.forEach(session => {
-      const sessionItem = this.createSessionPreviewItem(session);
+    this.previewSessionsList.innerHTML = "";
+    
+    this.fileData.sessions.forEach(session => {
+      const sessionItem = document.createElement("div");
+      sessionItem.className = "session-item";
+      
+      sessionItem.innerHTML = `
+        <div class="session-icon">📋</div>
+        <div class="session-details">
+          <div class="session-name">${session.name}</div>
+          <div class="session-meta">
+            <span>🍪 ${session.cookies.length} cookies</span>
+            <span>📝 Order: ${session.order}</span>
+            <span>📅 ${new Date(session.updatedAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+      `;
+      
       this.previewSessionsList.appendChild(sessionItem);
     });
 
-    // Show session preview
-    this.sessionPreview.style.display = 'block';
-  }
-
-  private createSessionPreviewItem(session: SessionData): HTMLElement {
-    const item = document.createElement('div');
-    item.className = 'session-item';
-
-    const icon = document.createElement('div');
-    icon.className = 'session-icon';
-    icon.textContent = '🔗';
-
-    const details = document.createElement('div');
-    details.className = 'session-details';
-
-    const name = document.createElement('div');
-    name.className = 'session-name';
-    name.textContent = session.name;
-
-    const meta = document.createElement('div');
-    meta.className = 'session-meta';
-
-    const domainSpan = document.createElement('span');
-    domainSpan.textContent = `🌐 ${session.domain}`;
-
-    const cookiesSpan = document.createElement('span');
-    cookiesSpan.textContent = `🍪 ${session.cookies.length} cookies`;
-
-    meta.appendChild(domainSpan);
-    meta.appendChild(cookiesSpan);
-
-    details.appendChild(name);
-    details.appendChild(meta);
-
-    item.appendChild(icon);
-    item.appendChild(details);
-
-    return item;
+    this.sessionPreview.style.display = "block";
   }
 
   private async handleImport(): Promise<void> {
-    if (!this.fileInfo || this.isImporting) {
+    if (!this.fileData || !this.file) {
+      this.showStatus("No file to import", "error");
       return;
     }
 
     try {
-      this.isImporting = true;
+      this.showStatus("Importing sessions...", "loading");
       this.importBtn.disabled = true;
-      this.showStatus('Importing sessions...', 'loading');
 
-      // Get import mode
-      const importMode = document.querySelector('input[name="importMode"]:checked') as HTMLInputElement;
-      const mode = importMode?.value || 'merge';
 
-      // Import sessions
-      await this.importSessions(this.fileInfo.content, mode);
-
-      this.showStatus(`Successfully imported ${this.fileInfo.sessions.length} sessions!`, 'success');
+      const importMode = (document.querySelector('input[name="importMode"]:checked') as HTMLInputElement).value;
       
-      // Close tab after successful import
-      setTimeout(() => {
-        this.goBackToExtension();
-      }, 2000);
-
-    } catch (error) {
-      console.error('Import error:', error);
-      this.showStatus(handleError(error, 'Import sessions'), 'error');
-      this.importBtn.disabled = false;
-    } finally {
-      this.isImporting = false;
-    }
-  }
 
 
 
-  private async importSessions(jsonData: string, mode: string): Promise<void> {
-    try {
-      const result = await this.chromeApi.getStorageData<{ sessions: SessionData[] }>(['sessions']);
-      const currentSessions = result.sessions || [];
-      
-      const importData = JSON.parse(jsonData);
-      
-      if (!importData || !Array.isArray(importData.sessions)) {
-        throw new ExtensionError("Invalid import data format");
-      }
 
-      let importedSessions: SessionData[] = importData.sessions;
-      
-      // Generate new IDs for all imported sessions to avoid conflicts
-      importedSessions = importedSessions.map(session => ({
-        ...session,
-        id: generateId()
-      }));
 
-      // Merge with existing sessions
-      const allSessions = [...currentSessions, ...importedSessions];
-      
-      await this.chromeApi.setStorageData({
-        sessions: allSessions
+
+      // Send import request to background script
+      const response = await chrome.runtime.sendMessage({
+        action: "IMPORT_SESSIONS_NEW",
+        data: {
+          sessions: this.fileData.sessions,
+          mode: importMode
+        }
       });
 
+      if (response.success) {
+        this.showStatus(`Successfully imported ${this.fileData.sessions.length} sessions!`, "success");
+        
+        // Close the import page after a delay
+        setTimeout(() => {
+          this.closeImportPage();
+        }, 2000);
+      } else {
+        throw new Error(response.error || "Import failed");
+      }
+
     } catch (error) {
-      throw new ExtensionError(handleError(error, "Import sessions"));
+      this.showStatus(handleError(error, "import sessions"), "error");
+      console.error("Import error:", error);
+    } finally {
+      this.importBtn.disabled = false;
     }
   }
 
   private clearFile(): void {
-    this.fileInfo = null;
-    this.jsonFileInput.value = '';
-    this.fileInfoDiv.style.display = 'none';
-    this.sessionPreview.style.display = 'none';
+    this.file = null;
+    this.fileData = null;
+    this.fileInput.value = "";
+    this.fileInfo.style.display = "none";
+    this.sessionPreview.style.display = "none";
     this.importBtn.disabled = true;
     this.hideStatus();
   }
 
-  private goBackToExtension(): void {
-    // Close the import tab and return to the extension
-    window.close();
-  }
-
-  private showStatus(message: string, type: 'success' | 'error' | 'loading'): void {
+  private showStatus(message: string, type: "success" | "error" | "loading"): void {
     this.statusMessage.textContent = message;
     this.statusMessage.className = `status-message ${type}`;
-    this.statusMessage.style.display = 'block';
+    this.statusMessage.style.display = "block";
   }
 
   private hideStatus(): void {
-    this.statusMessage.style.display = 'none';
+    this.statusMessage.style.display = "none";
+  }
+
+  private closeImportPage(): void {
+    // Close the current tab
+    window.close();
   }
 
   private formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }
 }
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('Import page loaded');
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("Import page loaded");
   new ImportController();
 });

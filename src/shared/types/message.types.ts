@@ -36,10 +36,21 @@ export interface ExportSessionsMessage extends BaseMessage {
   domain: string;
 }
 
+
 export interface ImportSessionsMessage extends BaseMessage {
   action: "importSessions";
   data: string;
 }
+
+
+export interface ImportSessionsNewMessage extends BaseMessage {
+  action: "IMPORT_SESSIONS_NEW";
+  data: {
+    sessions: SessionData[];
+    mode: string;
+  };
+}
+
 
 export type MessageType = 
   | GetCurrentSessionMessage 
@@ -48,7 +59,8 @@ export type MessageType =
   // GetCurrentDomainMessage removed - now using URL parameters
   | ClearSessionsMessage
   | ExportSessionsMessage
-  | ImportSessionsMessage;
+  | ImportSessionsMessage
+  | ImportSessionsNewMessage;
 
 export interface MessageResponse<T = undefined> {
   success: boolean;
