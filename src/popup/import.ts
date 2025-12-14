@@ -26,6 +26,7 @@ class ImportController {
   private file: File | null = null;
   private fileData: ImportFileData | null = null;
   
+
   private uploadArea!: HTMLElement;
   private fileInput!: HTMLInputElement;
   private fileInfo!: HTMLElement;
@@ -36,11 +37,13 @@ class ImportController {
   private previewSessionsList!: HTMLElement;
   private importBtn!: HTMLButtonElement;
   private statusMessage!: HTMLElement;
+  private fileReadyMessage!: HTMLElement;
 
   constructor() {
     this.initializeElements();
     this.setupEventListeners();
   }
+
 
   private initializeElements(): void {
     this.uploadArea = document.getElementById("uploadArea")!;
@@ -53,6 +56,7 @@ class ImportController {
     this.previewSessionsList = document.getElementById("previewSessionsList")!;
     this.importBtn = document.getElementById("importBtn") as HTMLButtonElement;
     this.statusMessage = document.getElementById("statusMessage")!;
+    this.fileReadyMessage = document.getElementById("fileReadyMessage")!;
   }
 
   private setupEventListeners(): void {
@@ -153,6 +157,7 @@ class ImportController {
   }
 
 
+
   private parseFileContent(content: string): void {
     try {
       const data: ImportFileData = JSON.parse(content);
@@ -181,6 +186,7 @@ class ImportController {
       this.fileData = data;
       this.displayFileInfo();
       this.displaySessionsPreview();
+      this.showFileReadyMessage();
       this.importBtn.disabled = false;
       
     } catch (error) {
@@ -335,6 +341,7 @@ class ImportController {
     }
   }
 
+
   private clearFile(): void {
     this.file = null;
     this.fileData = null;
@@ -343,6 +350,7 @@ class ImportController {
     this.sessionPreview.style.display = "none";
     this.importBtn.disabled = true;
     this.hideStatus();
+    this.hideFileReadyMessage();
   }
 
   private showStatus(message: string, type: "success" | "error" | "loading"): void {
@@ -360,6 +368,7 @@ class ImportController {
     window.close();
   }
 
+
   private formatFileSize(bytes: number): string {
     if (bytes === 0) return "0 Bytes";
     
@@ -368,6 +377,14 @@ class ImportController {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  }
+
+  private showFileReadyMessage(): void {
+    this.fileReadyMessage.style.display = "flex";
+  }
+
+  private hideFileReadyMessage(): void {
+    this.fileReadyMessage.style.display = "none";
   }
 }
 
