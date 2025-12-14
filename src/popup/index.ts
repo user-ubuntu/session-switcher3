@@ -397,6 +397,7 @@ class PopupController {
     }
   }
 
+
   private switchExportImportTab(tabName: string): void {
     // Remove active class from all tab buttons and tab panes
     const tabButtons = document.querySelectorAll('.tab-btn');
@@ -406,8 +407,23 @@ class PopupController {
     tabPanes.forEach(pane => pane.classList.remove('active'));
     
     // Add active class to the selected tab button and pane
-    const selectedBtn = document.getElementById(`${tabName}TabBtn`);
-    const selectedPane = document.getElementById(`${tabName}Tab`);
+    let selectedBtn: HTMLElement | null = null;
+    let selectedPane: HTMLElement | null = null;
+    
+    switch (tabName) {
+      case 'export':
+        selectedBtn = document.getElementById('exportTabBtn');
+        selectedPane = document.getElementById('exportTab');
+        break;
+      case 'import':
+        selectedBtn = document.getElementById('importTabBtn');
+        selectedPane = document.getElementById('importTab');
+        break;
+      case 'importNewTab':
+        selectedBtn = document.getElementById('importNewTabBtn');
+        selectedPane = document.getElementById('importNewTab');
+        break;
+    }
     
     if (selectedBtn) {
       selectedBtn.classList.add('active');

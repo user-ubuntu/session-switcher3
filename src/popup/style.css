@@ -438,6 +438,7 @@ body {
   color: #dc3545;
 }
 
+
 /* Modal Styles */
 .modal {
   display: none;
@@ -448,6 +449,7 @@ body {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
+}
 
 /* Select Dropdown Styles */
 .select-container {
@@ -492,6 +494,7 @@ body {
   font-weight: 500;
   color: #6c757d;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
@@ -514,6 +517,17 @@ body {
 .tab-pane.active {
   display: block;
 }
+
+/* Import New Tab Section Styling */
+.importnewtab-section {
+  text-align: center;
+  padding: 20px;
+}
+
+.importnewtab-section p {
+  margin-bottom: 20px;
+  color: #495057;
+  font-size: 14px;
 }
 
 .modal.show {
