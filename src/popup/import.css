@@ -106,8 +106,9 @@ body {
 }
 
 .file-ready-message {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -122,14 +123,14 @@ body {
 }
 
 .ready-text h4 {
-  color: #495057;
+  color: #155724;
   margin-bottom: 2px;
   font-size: 14px;
   font-weight: 500;
 }
 
 .ready-text p {
-  color: #6c757d;
+  color: #155724;
   font-size: 13px;
   margin: 0;
 }
