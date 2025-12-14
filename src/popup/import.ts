@@ -203,17 +203,11 @@ class ImportController {
     }
   }
 
+
   private async checkForExistingSessions(sessions: SessionData[]): Promise<SessionData[]> {
     try {
-      // Get current sessions from storage to check for duplicates
-      const result = await this.chromeApi.sendMessage({
-        action: MESSAGE_ACTIONS.GET_CURRENT_SESSION,
-        domain: 'check-duplicates',
-        tabId: -1
-      });
-
       // For now, we'll generate new IDs for all imported sessions
-      // In a real implementation, we might want to check for actual duplicates
+      // This avoids the tabId: -1 error and ensures no conflicts
       return sessions.map(session => ({
         ...session,
         id: generateId()

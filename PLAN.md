@@ -110,4 +110,19 @@
 - ✅ Styling sesuai dengan referensi
 - ✅ Semua functionality terintegrasi dengan baik
 
+
 Extension sekarang siap untuk digunakan! Masalah tab yang tidak tampil telah sepenuhnya diperbaiki.
+
+## Error "No tab with id: -1" TELAH DIPERBAIKI ✅
+
+### Masalah yang Diperbaiki:
+- ✅ **Error Tab ID -1**: Menghapus penggunaan `tabId: -1` di `checkForExistingSessions` method
+- ✅ **Import Functionality**: Mengoptimalkan logic untuk menghindari conflict dengan session ID
+- ✅ **Build Success**: Build berhasil tanpa error
+
+### Perbaikan Detail:
+- Menghapus Chrome API call yang menggunakan `tabId: -1` 
+- Mempertahankan functionality untuk generate unique ID untuk imported sessions
+- Menghilangkan dependency pada background script untuk duplicate checking
+
+Extension sekarang berfungsi sempurna tanpa error!
