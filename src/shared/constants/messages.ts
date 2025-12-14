@@ -1,3 +1,4 @@
+
 export const MESSAGE_ACTIONS = {
   GET_CURRENT_SESSION: "getCurrentSession",
   SWITCH_SESSION: "switchSession",
@@ -6,4 +7,6 @@ export const MESSAGE_ACTIONS = {
   CLEAR_SESSIONS: "clearSessions",
   EXPORT_SESSIONS: "exportSessions",
   IMPORT_SESSIONS: "importSessions",
+
+  IMPORT_SESSIONS_NEW: "IMPORT_SESSIONS_NEW",
 } as const;
