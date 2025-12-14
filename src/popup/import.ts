@@ -294,6 +294,7 @@ class ImportController {
     this.sessionPreview.style.display = "block";
   }
 
+
   private async handleImport(): Promise<void> {
     if (!this.fileData || !this.file) {
       this.showStatus("No file to import", "error");
@@ -303,16 +304,11 @@ class ImportController {
     try {
       this.showStatus("Importing sessions...", "loading");
       this.importBtn.disabled = true;
-
+      console.log("Import button disabled, starting import process...");
 
       const importMode = (document.querySelector('input[name="importMode"]:checked') as HTMLInputElement).value;
       
-
-
-
-
-
-
+      console.log("Sending import request to background script...");
       // Send import request to background script
       const response = await chrome.runtime.sendMessage({
         action: "IMPORT_SESSIONS_NEW",
@@ -322,23 +318,31 @@ class ImportController {
         }
       });
 
-      if (response.success) {
+      console.log("Response from background script:", response);
+
+      if (response && response.success) {
+        console.log("Import successful, disabling button and closing tab...");
         this.showStatus(`Successfully imported ${this.fileData.sessions.length} sessions!`, "success");
+        this.importBtn.disabled = true;
         
         // Close the import page after a delay
         setTimeout(() => {
+          console.log("Closing import page...");
           this.closeImportPage();
         }, 2000);
       } else {
-        throw new Error(response.error || "Import failed");
+        console.error("Import failed:", response?.error || "Unknown error");
+        throw new Error(response?.error || "Import failed");
       }
 
     } catch (error) {
+      console.error("Import error caught:", error);
       this.showStatus(handleError(error, "import sessions"), "error");
       console.error("Import error:", error);
-    } finally {
+      // Re-enable button on error so user can try again
       this.importBtn.disabled = false;
     }
+    // Note: Removed finally block to prevent re-enabling button on success
   }
 
 
